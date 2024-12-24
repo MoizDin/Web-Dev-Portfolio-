@@ -11,86 +11,95 @@ app.use(cors());
 
 console.log("BOOKS", Books);
 
-app.get('/', function(req, res) {
-
+app.get('/', function (req, res) {
+    res.send("Welcome to the Books API");
 });
 
-app.get('/about', function(req, res) {
-    res.send("mongodb express React and mongoose app, React runs in another application");
-    Books.countDocuments().exec()
-        .then(count => {
-            console.log("Total documents Count before addition:", count);
-        })
-        .catch(err => {
-            console.log(err);
-        });
+app.get('/about', async function (req, res) {
+    try {
+        res.send("MongoDB Express React and Mongoose app. React runs in another application.");
+        const count = await Books.countDocuments().exec();
+        console.log("Total documents count before addition:", count);
+    } catch (err) {
+        console.error(err);
+    }
 });
 
-app.get('/allbooks', function(req, res) {
-    Books.find(function(err, allbook) {
-        if (err) {
-            console.log(err);
+app.get('/allbooks', async function (req, res) {
+    try {
+        const allBooks = await Books.find();
+        res.json(allBooks);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error fetching books");
+    }
+});
+
+app.get('/getbook/:id', async function (req, res) {
+    let id = req.params.id;
+    try {
+        const book = await Books.findById(id);
+        if (book) {
+            res.json(book);
         } else {
-            res.json(allbook);
+            res.status(404).send("Book not found");
         }
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error fetching the book");
+    }
 });
 
-app.get('/getbook/:id', function(req, res) {
+app.post('/addbooks', async function (req, res) {
+    try {
+        let newBook = new Books(req.body);
+        await newBook.save();
+        res.status(200).json({ message: 'Book added successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(400).send('Adding new book failed');
+    }
+});
+
+app.post('/updatebook/:id', async function (req, res) {
     let id = req.params.id;
-    Books.findById(id, function(err, book) {
-        res.json(book);
-    });
-});
+    const { booktitle, PubYear, author, Topic, formate } = req.body;
 
-app.post('/addbooks', function(req, res) {
-    console.log("Ref", req.body);
-    let newbook = new Books(req.body);
-    console.log("newbook->", newbook);
-
-    newbook.save()
-        .then(todo => {
-            res.status(200).json({'books': 'book added successfully'});
-        })
-        .catch(err => {
-            res.status(400).send('adding new book failed');
-        });
-});
-
-app.post('/updatebook/:id', function(req, res) {
-    let id = req.params.id;
-    let updatedbook = new Books(req.body);
-    console.log("update id", id, "newbook->", updatedbook);
-
-    Books.findByIdAndUpdate(id, {
-            booktitle: updatedbook.booktitle,
-            PubYear: updatedbook.PubYear,
-            author: updatedbook.author,
-            Topic: updatedbook.Topic,
-            formate: updatedbook.formate
-        },
-        function(err, docs) {
-            if (err) {
-                console.log(err);
-            } else {
-                res.status(200).json({'books': 'book updated successfully'});
-            }
-        });
-});
-
-app.post('/deleteBook/:id', function(req, res) {
-    let id = req.params.id;
-
-    console.log("deleting");
-    Books.findByIdAndDelete(id, function(err, docs) {
-        if (err) {
-            console.log(err);
+    try {
+        const updatedBook = await Books.findByIdAndUpdate(
+            id,
+            { booktitle, PubYear, author, Topic, formate },
+            { new: true, runValidators: true }
+        );
+        if (updatedBook) {
+            res.status(200).json({ message: 'Book updated successfully', updatedBook });
         } else {
-            res.status(200).send('Book Deleted');
+            res.status(404).send("Book not found");
         }
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error updating book');
+    }
 });
 
-app.listen(5000, function() {
-    console.log("Server is running on the port 5000");
+app.post('/deleteBook/:id', async function (req, res) {
+    let id = req.params.id;
+
+    try {
+        const deletedBook = await Books.findByIdAndDelete(id);
+        if (deletedBook) {
+            res.status(200).send('Book deleted successfully');
+        } else {
+            res.status(404).send("Book not found");
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Error deleting book');
+    }
 });
+
+
+app.listen(5000, function () {
+    console.log("Server is running on port 5000");
+});
+
